@@ -1,1 +1,1 @@
-print("Hello world, from client!")
+local UIController = require(script.Controllers.UIController)

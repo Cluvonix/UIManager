@@ -1,14 +1,12 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local TweenUtil = require(ReplicatedStorage.Shared.Utils.UIUtils.TweenUtil)
 local UIController = {}
 
 
 
+local StarterPlayer = game:GetService("StarterPlayer")
+local UIManager = require(StarterPlayer.StarterPlayerScripts.Client.UI.UIManager)
+task.wait(5)
+print("hi")
+UIManager.HideHUD()
 
-
-function UIController.init()
-    TweenUtil.Tween(guiOrTarget, "HoverIn", { Scale = 1.05} )
-end
 
 return UIController
