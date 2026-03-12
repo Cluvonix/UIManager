@@ -52,14 +52,11 @@ local function getOffScreenPosition(gui: GuiObject, direction: OffScreenDirectio
 
 	local guiPos = gui.AbsolutePosition
 	local guiSize = gui.AbsoluteSize
-	local guiScaleX = guiSize.X / screenSize.X
-	local guiScaleY = guiSize.Y / screenSize.Y
+	local currentPosition = gui.Position
 	local anchor = gui.AnchorPoint
 
-	local anchorAbsX = guiPos.X + (guiSize.X * anchor.X)
-	local anchorAbsY = guiPos.Y + (guiSize.Y * anchor.Y)
-	local currentAnchorScaleX = anchorAbsX / screenSize.X
-	local currentAnchorScaleY = anchorAbsY / screenSize.Y
+	local currentAnchorAbsX = guiPos.X + (guiSize.X * anchor.X)
+	local currentAnchorAbsY = guiPos.Y + (guiSize.Y * anchor.Y)
 
 	local chosenDirection = direction
 	if not chosenDirection then
@@ -68,33 +65,70 @@ local function getOffScreenPosition(gui: GuiObject, direction: OffScreenDirectio
 		local leftDistance = guiPos.X
 		local rightDistance = screenSize.X - (guiPos.X + guiSize.X)
 
-		chosenDirection = "top"
-		local shortestDistance = topDistance
+		local verticalDistance = math.min(topDistance, bottomDistance)
+		local horizontalDistance = math.min(leftDistance, rightDistance)
 
-		if bottomDistance < shortestDistance then
-			shortestDistance = bottomDistance
-			chosenDirection = "bottom"
-		end
-		if leftDistance < shortestDistance then
-			shortestDistance = leftDistance
-			chosenDirection = "left"
-		end
-		if rightDistance < shortestDistance then
-			chosenDirection = "right"
+		if horizontalDistance < verticalDistance then
+			if leftDistance <= rightDistance then
+				chosenDirection = "left"
+			else
+				chosenDirection = "right"
+			end
+		else
+			if topDistance <= bottomDistance then
+				chosenDirection = "top"
+			else
+				chosenDirection = "bottom"
+			end
 		end
 	end
 
 	if chosenDirection == "top" then
-		return UDim2.fromScale(currentAnchorScaleX, -(1 - anchor.Y) * guiScaleY)
+		local targetAnchorAbsY = -((1 - anchor.Y) * guiSize.Y) - 1
+		local deltaY = targetAnchorAbsY - currentAnchorAbsY
+		return UDim2.new(
+			currentPosition.X.Scale,
+			currentPosition.X.Offset,
+			currentPosition.Y.Scale,
+			currentPosition.Y.Offset + deltaY
+		)
 	elseif chosenDirection == "bottom" then
-		return UDim2.fromScale(currentAnchorScaleX, 1 + anchor.Y * guiScaleY)
+		local targetAnchorAbsY = screenSize.Y + (anchor.Y * guiSize.Y) + 1
+		local deltaY = targetAnchorAbsY - currentAnchorAbsY
+		return UDim2.new(
+			currentPosition.X.Scale,
+			currentPosition.X.Offset,
+			currentPosition.Y.Scale,
+			currentPosition.Y.Offset + deltaY
+		)
 	elseif chosenDirection == "left" then
-		return UDim2.fromScale(-(1 - anchor.X) * guiScaleX, currentAnchorScaleY)
+		local targetAnchorAbsX = -((1 - anchor.X) * guiSize.X) - 1
+		local deltaX = targetAnchorAbsX - currentAnchorAbsX
+		return UDim2.new(
+			currentPosition.X.Scale,
+			currentPosition.X.Offset + deltaX,
+			currentPosition.Y.Scale,
+			currentPosition.Y.Offset
+		)
 	elseif chosenDirection == "right" then
-		return UDim2.fromScale(1 + anchor.X * guiScaleX, currentAnchorScaleY)
-	else
-		return UDim2.fromScale(currentAnchorScaleX, 1 + anchor.Y * guiScaleY)
+		local targetAnchorAbsX = screenSize.X + (anchor.X * guiSize.X) + 1
+		local deltaX = targetAnchorAbsX - currentAnchorAbsX
+		return UDim2.new(
+			currentPosition.X.Scale,
+			currentPosition.X.Offset + deltaX,
+			currentPosition.Y.Scale,
+			currentPosition.Y.Offset
+		)
 	end
+
+	local fallbackAnchorAbsY = screenSize.Y + (anchor.Y * guiSize.Y) + 1
+	local fallbackDeltaY = fallbackAnchorAbsY - currentAnchorAbsY
+	return UDim2.new(
+		currentPosition.X.Scale,
+		currentPosition.X.Offset,
+		currentPosition.Y.Scale,
+		currentPosition.Y.Offset + fallbackDeltaY
+	)
 end
 
 function UIManager.CloseAllOtherThan(uiName: string)
@@ -138,19 +172,23 @@ end
 
 function UIManager.HideHUD(exceptions: { [string]: any }?)
 	for _, panel in UIRegristry.HUD:GetChildren() do
-		if not exceptions or not exceptions[panel.Name] then
+		if panel:IsA("Frame") and (not exceptions or not exceptions[panel.Name]) then
 			captureDefault(panel)
-			TweenUI.Tween(panel, "Pop", { Goal = { Position = getDefaultPosition(panel) } })
-			panel.Visible = false
+			local tween = TweenUI.Tween(panel, "Back", { Position = getOffScreenPosition(panel) })
+			tween.Completed:Connect(function()
+				panel.Visible = false
+			end)
 		end
 	end
 end
 
 function UIManager.ShowHUD(uiName: string)
 	for _, panel in UIRegristry.HUD:GetChildren() do
-		if panel.Name ~= uiName then
-			TweenUI.Tween(panel, "Pop", { Goal = { Position = getDefaultPosition(panel) } })
-			panel.Visible = true
+		if panel:IsA("Frame") and panel.Name ~= uiName then
+			local tween = TweenUI.Tween(panel, "Back", { Position = getDefaultPosition(panel) })
+			tween.Completed:Connect(function()
+				panel.Visible = true
+			end)
 		end
 	end
 end

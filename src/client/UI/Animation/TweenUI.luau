@@ -5,41 +5,45 @@ local TweenUtils = {}
 
 type TweenConfig = {
 	info: TweenInfo?,
-	goals: { [string]: any }?,
+	goal: { [string]: any }?,
 }
 
 type FinalConfig = {
 	info: TweenInfo,
-	goals: { [string]: any },
+	goal: { [string]: any },
 }
 
-type PresetName = "HoverIn" | "HoverOut" | "PressIn" | "PressOut" | "Pop"
+type PresetName = "HoverIn" | "HoverOut" | "PressIn" | "PressOut" | "Pop" | "Back"
 
 TweenUtils.Presets = {
 	-- Hover
 	HoverIn = {
 		info = TweenInfo.new(0.20, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-		goals = { Scale = 1.05 },
+		goal = { Scale = 1.05 },
 	},
 	HoverOut = {
 		info = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-		goals = { Scale = 1.00 },
+		goal = { Scale = 1.00 },
 	},
 
 	-- Press
 	PressIn = {
 		info = TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-		goals = { Scale = 0.97 },
+		goal = { Scale = 0.97 },
 	},
 	PressOut = {
 		info = TweenInfo.new(0.10, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-		goals = { Scale = 1.00 },
+		goal = { Scale = 1.00 },
 	},
 
 	-- Pop (nice for confirmations, badges, etc.)
 	Pop = {
 		info = TweenInfo.new(0.12, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-		goals = { Scale = 1.08 },
+		goal = { Scale = 1.08 },
+	},
+	Back = {
+		info = TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In),
+		goal = { Scale = 1.10 },
 	},
 }
 
@@ -49,8 +53,8 @@ TweenUtils.Variants = {
 	Slow = { info = TweenInfo.new(0.30, Enum.EasingStyle.Quad, Enum.EasingDirection.Out) },
 
 	-- Strength (scale)
-	Subtle = { goals = { Scale = 1.03 } },
-	Strong = { goals = { Scale = 1.10 } },
+	Subtle = { goal = { Scale = 1.03 } },
+	Strong = { goal = { Scale = 1.10 } },
 
 	-- Different feel
 	Soft = { info = TweenInfo.new(0.20, Enum.EasingStyle.Sine, Enum.EasingDirection.Out) },
@@ -77,10 +81,10 @@ local function formatOverride(override: any): TweenConfig?
 	end
 	if type(override) == "table" then
 		local tableOverride = override :: { [string]: any }
-		if tableOverride.info ~= nil or tableOverride.goals ~= nil then
+		if tableOverride.info ~= nil or tableOverride.goal ~= nil then
 			return tableOverride :: TweenConfig
 		end
-		return { goals = tableOverride }
+		return { goal = tableOverride }
 	end
 	if typeof(override) == "TweenInfo" then
 		return { info = override }
@@ -100,18 +104,17 @@ local function deepMerge(target: { [string]: any }, source: { [string]: any })
 end
 
 local function mergeTables(...): FinalConfig
-	local result: FinalConfig = { info = TweenInfo.new(), goals = {} }
+	local result: FinalConfig = { info = TweenInfo.new(), goal = {} }
 
 	for _, config in ipairs({ ... }) do
 		local typedConfig = config :: TweenConfig
 		if typedConfig.info ~= nil then
 			result.info = typedConfig.info
 		end
-		if typedConfig.goals ~= nil then
-			deepMerge(result.goals, typedConfig.goals :: { [string]: any })
+		if typedConfig.goal ~= nil then
+			result.goal = typedConfig.goal
 		end
 	end
-
 	return result
 end
 
@@ -129,15 +132,15 @@ function TweenUtils.Tween(guiOrTarget: Instance, presetName: PresetName, ...: (s
 
 	local finalConfig = mergeTables(preset, unpack(formattedOverrides))
 	local target = (guiOrTarget :: Instance) :: Instance
-	if finalConfig.goals.Scale then
-		assert(guiOrTarget:IsA("GuiObject"), "TweenUI: Scale goals require a GuiObject target")
+	if finalConfig.goal.Scale then
+		assert(guiOrTarget:IsA("GuiObject"), "TweenUI: Scale goal require a GuiObject target")
 		local uiScale = GetOrCreateUIScale(guiOrTarget :: GuiObject)
 		target = uiScale
 	else
 		target = guiOrTarget
 	end
 
-	local tween = TweenService:Create(target, finalConfig.info, finalConfig.goals)
+	local tween = TweenService:Create(target, finalConfig.info, finalConfig.goal)
 	activeTweens[target] = tween
 	tween:Play()
 
